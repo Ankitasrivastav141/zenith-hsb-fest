@@ -1,0 +1,21 @@
+# Python virtual environment
+.venv/
+venv/
+env/
+ENV/
+
+# Python cache & bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.pytest_cache/
+
+# Local database (fresh clones automatically seed from data/events_seed.xlsx on startup)
+fest.db
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+*.log

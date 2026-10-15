@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Dashboard — Zenith '26 Fest System</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📊</text></svg>">
+  
+  <!-- Tailwind CSS via Play CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#eef2ff',
+              100: '#e0e7ff',
+              500: '#6366f1',
+              600: '#4f46e5',
+              700: '#4338ca',
+            }
+          },
+          animation: {
+            'fade-in': 'fadeIn 0.25s ease-out forwards',
+          },
+          keyframes: {
+            fadeIn: {
+              '0%': { opacity: 0, transform: 'translateY(4px)' },
+              '100%': { opacity: 1, transform: 'translateY(0)' },
+            }
+          }
+        }
+      }
+    }
+  </script>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col font-sans antialiased selection:bg-indigo-500 selection:text-white">
+
+  <!-- Admin Navbar -->
+  <header class="sticky top-0 z-30 bg-slate-900 border-b border-slate-800 text-white shadow-md">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      <div class="flex items-center space-x-3">
+        <span class="text-2xl">⚡</span>
+        <div>
+          <a href="/" class="text-lg sm:text-xl font-black tracking-tight text-white hover:text-indigo-300 transition">
+            ZENITH '26
+          </a>
+          <span class="ml-2 text-xs font-semibold px-2 py-0.5 rounded bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
+            Coordinator Dashboard
+          </span>
+        </div>
+      </div>
+
+      <div class="flex items-center space-x-3">
+        <button id="add-event-btn" class="text-xs font-semibold px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white shadow-sm transition flex items-center gap-1.5">
+          <span>+</span>
+          <span>Add Event</span>
+        </button>
+        <button id="refresh-dashboard-btn" class="text-xs font-medium px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition flex items-center gap-1">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+          </svg>
+          <span class="hidden sm:inline">Refresh</span>
+        </button>
+        <a href="/" class="text-xs font-medium px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white transition">
+          View Portal →
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Container -->
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-grow w-full space-y-8">
+    
+    <!-- Page Header & Live Status Indicator -->
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+      <div>
+        <h1 class="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">Fest Operations & Analytics</h1>
+        <p class="text-xs sm:text-sm text-slate-500 mt-0.5">Real-time live registration status and venue capacity tracking.</p>
+      </div>
+      <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200 self-start sm:self-auto">
+        <span class="h-2 w-2 rounded-full bg-emerald-500 animate-ping"></span>
+        <span id="last-updated-text">Live Database Sync</span>
+      </div>
+    </div>
+
+    <!-- Error Banner if Backend is down -->
+    <div id="admin-error-banner" class="hidden p-4 rounded-xl bg-red-50 border border-red-200 text-red-800 text-sm flex items-start gap-3">
+      <span class="text-xl">⚠️</span>
+      <div class="flex-1">
+        <p class="font-bold">Backend Connection Failed</p>
+        <p id="admin-error-text" class="text-xs mt-1 text-red-600">Could not fetch statistics or event data from the FastAPI server.</p>
+      </div>
+      <button id="admin-retry-btn" class="px-3 py-1 text-xs font-bold bg-red-600 hover:bg-red-700 text-white rounded-lg transition">
+        Retry
+      </button>
+    </div>
+
+    <!-- Top 4 Stat Cards -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5" id="stats-cards-container">
+      
+      <!-- Total Events -->
+      <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm relative overflow-hidden">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-bold uppercase tracking-wider text-slate-400">Total Events</span>
+          <span class="p-2 rounded-xl bg-blue-50 text-blue-600 text-lg">📅</span>
+        </div>
+        <div class="mt-3">
+          <div id="stat-total-events" class="text-3xl font-black text-slate-900">--</div>
+          <p class="text-xs text-slate-500 mt-1">Across 5 fest categories</p>
+        </div>
+      </div>
+
+      <!-- Total Registrations -->
+      <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm relative overflow-hidden">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-bold uppercase tracking-wider text-slate-400">Total Registrations</span>
+          <span class="p-2 rounded-xl bg-purple-50 text-purple-600 text-lg">🎟️</span>
+        </div>
+        <div class="mt-3">
+          <div id="stat-total-registrations" class="text-3xl font-black text-slate-900">--</div>
+          <p class="text-xs text-slate-500 mt-1">Unique student entries</p>
+        </div>
+      </div>
+
+      <!-- Overall Capacity Utilization -->
+      <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm relative overflow-hidden">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-bold uppercase tracking-wider text-slate-400">Overall Utilization</span>
+          <span class="p-2 rounded-xl bg-indigo-50 text-indigo-600 text-lg">📈</span>
+        </div>
+        <div class="mt-3">
+          <div class="flex items-baseline gap-2">
+            <span id="stat-utilization-pct" class="text-3xl font-black text-slate-900">--%</span>
+            <span id="stat-capacity-fraction" class="text-xs text-slate-500">of -- seats</span>
+          </div>
+          <!-- Progress bar -->
+          <div class="w-full bg-slate-100 rounded-full h-1.5 mt-2.5 overflow-hidden">
+            <div id="stat-utilization-bar" class="bg-indigo-600 h-1.5 rounded-full transition-all duration-500" style="width: 0%"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Upcoming Events -->
+      <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm relative overflow-hidden">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-bold uppercase tracking-wider text-slate-400">Upcoming Events</span>
+          <span class="p-2 rounded-xl bg-emerald-50 text-emerald-600 text-lg">⏳</span>
+        </div>
+        <div class="mt-3">
+          <div id="stat-upcoming-events" class="text-3xl font-black text-slate-900">--</div>
+          <p class="text-xs text-slate-500 mt-1">Scheduled Nov 14-15</p>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Category Breakdown Card -->
+    <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="text-sm font-bold uppercase tracking-wider text-slate-700">Events Distribution by Category</h2>
+        <span class="text-xs text-slate-400 font-medium">Computed live from database</span>
+      </div>
+      <div id="categories-container" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
+        <!-- Rendered dynamically -->
+        <div class="p-3 rounded-xl bg-slate-50 border border-slate-100 text-center animate-pulse">
+          <div class="h-3 w-12 bg-slate-200 rounded mx-auto mb-1"></div>
+          <div class="h-6 w-8 bg-slate-200 rounded mx-auto"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Navigation Tabs: Events Table vs Raw Registrations -->
+    <div class="border-b border-slate-200">
+      <nav class="flex space-x-6 text-sm font-medium">
+        <button id="tab-events-btn" class="pb-3 border-b-2 border-indigo-600 text-indigo-600 font-bold transition flex items-center gap-1.5">
+          <span>📋</span>
+          <span>Event Capacity & Utilization Table</span>
+        </button>
+        <button id="tab-registrations-btn" class="pb-3 border-b-2 border-transparent text-slate-500 hover:text-slate-700 transition flex items-center gap-1.5">
+          <span>👥</span>
+          <span>Raw Registration Roster</span>
+        </button>
+      </nav>
+    </div>
+
+    <!-- TAB 1: Events Capacity Table View -->
+    <section id="view-events-section" class="space-y-4">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div class="text-xs text-slate-500">
+          Ranked by highest demand (utilization % descending). Events over <span class="font-bold text-amber-600">90% capacity</span> are highlighted.
+        </div>
+        <div class="text-xs font-semibold text-slate-400">
+          Showing <span id="table-events-count" class="text-slate-800">14</span> events
+        </div>
+      </div>
+
+      <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+        <div class="overflow-x-auto">
+          <table class="w-full text-left border-collapse text-xs sm:text-sm">
+            <thead>
+              <tr class="bg-slate-50/80 border-b border-slate-200 text-slate-500 font-bold text-xs uppercase tracking-wider">
+                <th class="py-3 px-4">Event</th>
+                <th class="py-3 px-3">Category</th>
+                <th class="py-3 px-3">Date & Time</th>
+                <th class="py-3 px-3">Venue</th>
+                <th class="py-3 px-3">Booked / Total</th>
+                <th class="py-3 px-4 text-right">Utilization %</th>
+              </tr>
+            </thead>
+            <tbody id="events-table-body" class="divide-y divide-slate-100 font-normal">
+              <!-- Dynamically populated -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 2: Raw Registrations Table View -->
+    <section id="view-registrations-section" class="hidden space-y-4">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <!-- Event Filter Dropdown -->
+        <div class="flex items-center gap-2">
+          <label for="filter-registration-event" class="text-xs font-semibold text-slate-700">Filter by Event:</label>
+          <select id="filter-registration-event" class="text-xs rounded-xl border border-slate-200 px-3 py-1.5 bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 shadow-sm">
+            <option value="">All Events</option>
+          </select>
+        </div>
+        <div class="text-xs text-slate-500">
+          Showing <span id="registrations-count-display" class="font-bold text-slate-800">0</span> registrations
+        </div>
+      </div>
+
+      <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+        <div class="overflow-x-auto">
+          <table class="w-full text-left border-collapse text-xs sm:text-sm">
+            <thead>
+              <tr class="bg-slate-50/80 border-b border-slate-200 text-slate-500 font-bold text-xs uppercase tracking-wider">
+                <th class="py-3 px-4">ID</th>
+                <th class="py-3 px-3">Student Name</th>
+                <th class="py-3 px-3">Roll No</th>
+                <th class="py-3 px-3">Email</th>
+                <th class="py-3 px-3">Phone</th>
+                <th class="py-3 px-3">Event</th>
+                <th class="py-3 px-3">Registered At</th>
+                <th class="py-3 px-4 text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="registrations-table-body" class="divide-y divide-slate-100 font-normal">
+              <!-- Dynamically populated -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Stretch Goal 1: Add Event Modal -->
+  <div id="add-event-modal" class="fixed inset-0 z-50 hidden bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
+    <div class="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-slate-100 my-8">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+        <h3 class="text-base font-bold text-slate-900">Add New Zenith '26 Event</h3>
+        <button id="close-add-event-modal" class="text-slate-400 hover:text-slate-600 text-lg">✕</button>
+      </div>
+
+      <form id="add-event-form" class="mt-4 space-y-3.5 text-xs">
+        <div id="add-event-error-alert" class="hidden p-3 bg-red-50 border border-red-200 rounded-xl text-red-700"></div>
+
+        <div>
+          <label class="block font-semibold text-slate-700 mb-1">Title *</label>
+          <input type="text" id="new-event-title" required class="w-full px-3 py-2 border rounded-xl focus:ring-2 focus:ring-indigo-500" placeholder="e.g. Hackathon 2026">
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block font-semibold text-slate-700 mb-1">Category *</label>
+            <select id="new-event-category" required class="w-full px-3 py-2 border rounded-xl focus:ring-2 focus:ring-indigo-500 bg-white">
+              <option value="Technical">Technical</option>
+              <option value="Cultural">Cultural</option>
+              <option value="Sports">Sports</option>
+              <option value="Gaming">Gaming</option>
+              <option value="Workshop">Workshop</option>
+            </select>
+          </div>
+          <div>
+            <label class="block font-semibold text-slate-700 mb-1">Icon (Emoji)</label>
+            <input type="text" id="new-event-icon" value="⚡" class="w-full px-3 py-2 border rounded-xl focus:ring-2 focus:ring-indigo-500">
+          </div>
+        </div>
+
+        <div>
+          <label class="block font-semibold text-slate-700 mb-1">Venue *</label>
+          <input type="text" id="new-event-venue" required class="w-full px-3 py-2 border rounded-xl focus:ring-2 focus:ring-indigo-500" placeholder="e.g. Main Auditorium">
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block font-semibold text-slate-700 mb-1">Event Date *</label>
+            <input type="date" id="new-event-date" value="2026-11-14" required class="w-full px-3 py-2 border rounded-xl focus:ring-2 focus:ring-indigo-500">
+          </div>
+          <div>
+            <label class="block font-semibold text-slate-700 mb-1">Event Time *</label>
+            <input type="text" id="new-event-time" value="10:00 AM - 1:00 PM" required class="w-full px-3 py-2 border rounded-xl focus:ring-2 focus:ring-indigo-500">
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block font-semibold text-slate-700 mb-1">Capacity *</label>
+            <input type="number" id="new-event-capacity" min="1" value="50" required class="w-full px-3 py-2 border rounded-xl focus:ring-2 focus:ring-indigo-500">
+          </div>
+          <div>
+            <label class="block font-semibold text-slate-700 mb-1">Fee (₹)</label>
+            <input type="number" id="new-event-fee" min="0" value="0" class="w-full px-3 py-2 border rounded-xl focus:ring-2 focus:ring-indigo-500">
+          </div>
+        </div>
+
+        <div>
+          <label class="block font-semibold text-slate-700 mb-1">Description</label>
+          <textarea id="new-event-desc" rows="2" class="w-full px-3 py-2 border rounded-xl focus:ring-2 focus:ring-indigo-500" placeholder="Event overview and guidelines..."></textarea>
+        </div>
+
+        <div class="pt-3 flex justify-end gap-2">
+          <button type="button" id="cancel-add-event-btn" class="px-4 py-2 rounded-xl text-slate-600 hover:bg-slate-100 font-semibold transition">Cancel</button>
+          <button type="submit" id="save-new-event-btn" class="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold shadow-md transition">Create Event</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <footer class="bg-slate-900 border-t border-slate-800 text-slate-400 text-xs py-6 mt-auto">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center sm:text-left flex flex-col sm:flex-row justify-between items-center gap-2">
+      <div>Zenith '26 College Fest Management System · Coordinator Portal</div>
+      <a href="/" class="text-indigo-400 hover:underline">Return to Student Portal</a>
+    </div>
+  </footer>
+
+  <script src="/js/admin.js"></script>
+</body>
+</html>
