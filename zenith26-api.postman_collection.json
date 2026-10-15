@@ -278,6 +278,71 @@
           "response": []
         }
       ]
+    },
+    {
+      "name": "5. AI Features (Zenith AI Copilot)",
+      "item": [
+        {
+          "name": "POST /api/ai/chat - Student AI Copilot",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"message\": \"What are the best free technical events at Zenith '26?\",\n  \"history\": []\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/ai/chat",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "ai", "chat"]
+            },
+            "description": "Interactive AI Copilot providing contextual recommendations using live fest database."
+          },
+          "response": []
+        },
+        {
+          "name": "POST /api/ai/generate-event - Admin AI Event Creator",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"prompt\": \"Drone obstacle speed race with FPV headsets\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/ai/generate-event",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "ai", "generate-event"]
+            },
+            "description": "Generates complete structured event metadata from an idea prompt."
+          },
+          "response": []
+        },
+        {
+          "name": "GET /api/ai/insights - Admin AI Operations Briefing",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/ai/insights",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "ai", "insights"]
+            },
+            "description": "Generates executive operational summary analyzing live registrations and bottleneck areas."
+          },
+          "response": []
+        }
+      ]
     }
   ]
 }

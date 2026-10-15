@@ -421,6 +421,134 @@ document.addEventListener("DOMContentLoaded", () => {
       .replace(/'/g, "&#039;");
   }
 
+  // ---------------------------------------------------------
+  // Zenith AI Copilot (Interactive Student Chatbot)
+  // ---------------------------------------------------------
+  const aiChatToggleBtn = document.getElementById("ai-chat-toggle-btn");
+  const aiChatDrawer = document.getElementById("ai-chat-drawer");
+  const aiChatCloseBtn = document.getElementById("ai-chat-close-btn");
+  const aiChatMessages = document.getElementById("ai-chat-messages");
+  const aiTypingIndicator = document.getElementById("ai-typing-indicator");
+  const aiChatForm = document.getElementById("ai-chat-form");
+  const aiChatInput = document.getElementById("ai-chat-input");
+  const aiChips = document.querySelectorAll(".ai-chip");
+
+  let aiChatHistory = [];
+
+  if (aiChatToggleBtn && aiChatDrawer) {
+    aiChatToggleBtn.addEventListener("click", () => {
+      aiChatDrawer.classList.toggle("hidden");
+      if (!aiChatDrawer.classList.contains("hidden")) {
+        aiChatInput.focus();
+      }
+    });
+
+    aiChatCloseBtn.addEventListener("click", () => {
+      aiChatDrawer.classList.add("hidden");
+    });
+
+    aiChips.forEach(chip => {
+      chip.addEventListener("click", () => {
+        aiChatInput.value = chip.textContent.trim().replace(/^[^\w\s]+/, "").trim();
+        submitAIChat();
+      });
+    });
+
+    aiChatForm.addEventListener("submit", (e) => {
+      e.preventDefault();
+      submitAIChat();
+    });
+  }
+
+  async function submitAIChat() {
+    const text = aiChatInput.value.trim();
+    if (!text) return;
+
+    // Append User Message to UI
+    appendChatMessage("user", text);
+    aiChatInput.value = "";
+    aiChatInput.disabled = true;
+
+    // Show Typing Indicator
+    aiTypingIndicator.classList.remove("hidden");
+    aiChatMessages.scrollTop = aiChatMessages.scrollHeight;
+
+    // Update history
+    aiChatHistory.push({ role: "user", content: text });
+
+    try {
+      const response = await fetch("/api/ai/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          message: text,
+          history: aiChatHistory
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`Server returned ${response.status}`);
+      }
+
+      const data = await response.json();
+      const aiReply = data.reply || "Sorry, I couldn't process that right now.";
+
+      // Append AI Reply to UI
+      appendChatMessage("assistant", aiReply);
+      aiChatHistory.push({ role: "assistant", content: aiReply });
+
+    } catch (err) {
+      console.error("AI chat error:", err);
+      appendChatMessage("assistant", "⚠️ Unable to contact Zenith AI server. Please make sure the backend is running.");
+    } finally {
+      aiTypingIndicator.classList.add("hidden");
+      aiChatInput.disabled = false;
+      aiChatInput.focus();
+      aiChatMessages.scrollTop = aiChatMessages.scrollHeight;
+    }
+  }
+
+  function appendChatMessage(role, text) {
+    const msgDiv = document.createElement("div");
+    msgDiv.className = "flex items-start gap-2.5 animate-fade-in";
+
+    if (role === "user") {
+      msgDiv.className += " justify-end";
+      msgDiv.innerHTML = `
+        <div class="bg-indigo-600 text-white p-3 rounded-2xl rounded-tr-none shadow-xs max-w-[85%] leading-relaxed">
+          ${escapeHtml(text)}
+        </div>
+      `;
+    } else {
+      msgDiv.innerHTML = `
+        <div class="w-7 h-7 rounded-lg bg-indigo-600 text-white flex items-center justify-center text-xs font-bold shrink-0 shadow-sm">
+          AI
+        </div>
+        <div class="bg-white p-3 rounded-2xl rounded-tl-none border border-slate-200/80 shadow-xs max-w-[85%] leading-relaxed prose prose-sm">
+          ${formatMarkdown(text)}
+        </div>
+      `;
+    }
+
+    aiChatMessages.appendChild(msgDiv);
+    aiChatMessages.scrollTop = aiChatMessages.scrollHeight;
+  }
+
+  function formatMarkdown(text) {
+    if (!text) return "";
+    let html = escapeHtml(text);
+    // Bold
+    html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+    // Bullet points
+    html = html.replace(/^\s*-\s+(.*)$/gm, '<li class="ml-3 list-disc">$1</li>');
+    // Headers
+    html = html.replace(/^###\s+(.*)$/gm, '<h4 class="font-bold text-slate-900 mt-1 mb-0.5">$1</h4>');
+    html = html.replace(/^##\s+(.*)$/gm, '<h3 class="font-bold text-slate-900 mt-1 mb-0.5">$1</h3>');
+    // Line breaks
+    html = html.replace(/\n/g, '<br>');
+    return html;
+  }
+
   // Initial load
   fetchEvents();
 });

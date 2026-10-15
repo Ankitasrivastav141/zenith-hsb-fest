@@ -3,6 +3,7 @@ import sqlite3
 from datetime import datetime, date
 from pathlib import Path
 from typing import List, Optional, Dict
+from pydantic import BaseModel
 
 from fastapi import FastAPI, HTTPException, Query, status
 from fastapi.middleware.cors import CORSMiddleware
@@ -420,10 +421,60 @@ def delete_registration(registration_id: int):
     conn.commit()
     conn.close()
 
-    return {
-        "message": f"Registration {registration_id} for student {reg['student_name']} cancelled successfully",
-        "event_id": reg["event_id"]
-    }
+# ---------------------------------------------------------
+# AI Copilot Endpoints (Zenith AI)
+# ---------------------------------------------------------
+
+class AIChatRequest(BaseModel):
+    message: str
+    history: Optional[List[dict]] = None
+
+class AIGenerateEventRequest(BaseModel):
+    prompt: str
+
+@app.post("/api/ai/chat")
+def ai_chat_endpoint(chat_req: AIChatRequest):
+    """
+    AI Student Copilot: answers questions with live real-time fest context.
+    """
+    if not chat_req.message.strip():
+        raise HTTPException(status_code=400, detail="Message cannot be empty")
+    from backend.ai_service import chat_with_copilot
+    conn = get_db_connection()
+    try:
+        reply = chat_with_copilot(chat_req.message.strip(), chat_req.history or [], conn)
+    finally:
+        conn.close()
+    return {"reply": reply}
+
+
+@app.post("/api/ai/generate-event")
+def ai_generate_event_endpoint(gen_req: AIGenerateEventRequest):
+    """
+    Admin AI Copilot: generates full event attributes from an idea prompt.
+    """
+    if not gen_req.prompt.strip():
+        raise HTTPException(status_code=400, detail="Idea prompt cannot be empty")
+    from backend.ai_service import generate_event_from_prompt
+    try:
+        event_dict = generate_event_from_prompt(gen_req.prompt.strip())
+        return event_dict
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"AI generation failed: {str(e)}")
+
+
+@app.get("/api/ai/insights")
+def ai_insights_endpoint():
+    """
+    Admin AI Copilot: generates live executive operations briefing.
+    """
+    from backend.ai_service import generate_fest_insights
+    conn = get_db_connection()
+    try:
+        insights = generate_fest_insights(conn)
+    finally:
+        conn.close()
+    return {"insights": insights}
 
 
 # ---------------------------------------------------------

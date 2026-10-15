@@ -420,6 +420,107 @@ document.addEventListener("DOMContentLoaded", () => {
       .replace(/'/g, "&#039;");
   }
 
+  // ---------------------------------------------------------
+  // AI Operations Briefing & Event Generator (Admin Copilot)
+  // ---------------------------------------------------------
+  const aiBriefingBtn = document.getElementById("ai-briefing-btn");
+  const aiBriefingModal = document.getElementById("ai-briefing-modal");
+  const closeAiBriefingModal = document.getElementById("close-ai-briefing-modal");
+  const dismissAiBriefingBtn = document.getElementById("dismiss-ai-briefing-btn");
+  const aiBriefingSpinner = document.getElementById("ai-briefing-spinner");
+  const aiBriefingContent = document.getElementById("ai-briefing-content");
+
+  const aiEventPromptInput = document.getElementById("ai-event-prompt-input");
+  const aiGenerateEventBtn = document.getElementById("ai-generate-event-btn");
+  const aiGenerateSpinner = document.getElementById("ai-generate-spinner");
+  const aiGenerateBtnText = document.getElementById("ai-generate-btn-text");
+
+  if (aiBriefingBtn && aiBriefingModal) {
+    aiBriefingBtn.addEventListener("click", openAIBriefing);
+    closeAiBriefingModal.addEventListener("click", () => aiBriefingModal.classList.add("hidden"));
+    dismissAiBriefingBtn.addEventListener("click", () => aiBriefingModal.classList.add("hidden"));
+    aiBriefingModal.addEventListener("click", (e) => {
+      if (e.target === aiBriefingModal) aiBriefingModal.classList.add("hidden");
+    });
+  }
+
+  async function openAIBriefing() {
+    aiBriefingModal.classList.remove("hidden");
+    aiBriefingSpinner.classList.remove("hidden");
+    aiBriefingContent.classList.add("hidden");
+    aiBriefingContent.innerHTML = "";
+
+    try {
+      const res = await fetch("/api/ai/insights");
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      aiBriefingContent.innerHTML = formatMarkdown(data.insights || "No report generated.");
+    } catch (err) {
+      aiBriefingContent.innerHTML = `<div class="p-3 bg-red-50 text-red-700 rounded-xl">Unable to generate AI Briefing: ${err.message}. Verify that OPENAI_API_KEY is configured.</div>`;
+    } finally {
+      aiBriefingSpinner.classList.add("hidden");
+      aiBriefingContent.classList.remove("hidden");
+    }
+  }
+
+  if (aiGenerateEventBtn && aiEventPromptInput) {
+    aiGenerateEventBtn.addEventListener("click", async () => {
+      const prompt = aiEventPromptInput.value.trim();
+      if (!prompt) {
+        alert("Please enter a short event theme or idea first (e.g. 'Robotics obstacle challenge').");
+        return;
+      }
+
+      aiGenerateEventBtn.disabled = true;
+      aiGenerateSpinner.classList.remove("hidden");
+      aiGenerateBtnText.textContent = "Generating...";
+
+      try {
+        const res = await fetch("/api/ai/generate-event", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ prompt: prompt })
+        });
+
+        if (!res.ok) {
+          const errData = await res.json();
+          throw new Error(errData.detail || "Failed to generate event");
+        }
+
+        const ev = await res.json();
+
+        // Populate Form Fields with AI Result
+        if (ev.title) document.getElementById("new-event-title").value = ev.title;
+        if (ev.category) document.getElementById("new-event-category").value = ev.category;
+        if (ev.icon) document.getElementById("new-event-icon").value = ev.icon;
+        if (ev.venue) document.getElementById("new-event-venue").value = ev.venue;
+        if (ev.event_date) document.getElementById("new-event-date").value = ev.event_date;
+        if (ev.event_time) document.getElementById("new-event-time").value = ev.event_time;
+        if (ev.capacity) document.getElementById("new-event-capacity").value = ev.capacity;
+        if (ev.fee !== undefined) document.getElementById("new-event-fee").value = ev.fee;
+        if (ev.description) document.getElementById("new-event-desc").value = ev.description;
+
+      } catch (err) {
+        alert(`AI Generation error: ${err.message}`);
+      } finally {
+        aiGenerateEventBtn.disabled = false;
+        aiGenerateSpinner.classList.add("hidden");
+        aiGenerateBtnText.textContent = "Generate";
+      }
+    });
+  }
+
+  function formatMarkdown(text) {
+    if (!text) return "";
+    let html = escapeHtml(text);
+    html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+    html = html.replace(/^\s*-\s+(.*)$/gm, '<li class="ml-4 list-disc my-0.5">$1</li>');
+    html = html.replace(/^###\s+(.*)$/gm, '<h4 class="font-bold text-slate-900 mt-3 mb-1">$1</h4>');
+    html = html.replace(/^##\s+(.*)$/gm, '<h3 class="font-bold text-base text-slate-900 mt-4 mb-1.5 border-b pb-1">$1</h3>');
+    html = html.replace(/\n/g, '<br>');
+    return html;
+  }
+
   // Initial load
   loadDashboard();
 });
